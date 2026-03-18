@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "blind-chess",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/sfpeschke/Desktop/BlindChess", "-l", "3456"],
+      "port": 3456
+    }
+  ]
+}
