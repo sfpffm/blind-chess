@@ -172,9 +172,11 @@
   const boardCanvas = document.getElementById('boardCanvas');
   const boardCtx = boardCanvas.getContext('2d');
 
+  // Append U+FE0E (text variation selector) to prevent iOS emoji rendering
+  const VS = '\uFE0E';
   const PIECE_UNICODE = {
-    17: '\u2659', 18: '\u2658', 19: '\u2657', 20: '\u2656', 21: '\u2655', 22: '\u2654', // white P N B R Q K
-    33: '\u265F', 34: '\u265E', 35: '\u265D', 36: '\u265C', 37: '\u265B', 38: '\u265A', // black P N B R Q K
+    17: '\u2659' + VS, 18: '\u2658' + VS, 19: '\u2657' + VS, 20: '\u2656' + VS, 21: '\u2655' + VS, 22: '\u2654' + VS,
+    33: '\u265F' + VS, 34: '\u265E' + VS, 35: '\u265D' + VS, 36: '\u265C' + VS, 37: '\u265B' + VS, 38: '\u265A' + VS,
   };
 
   function drawBoard() {
@@ -257,6 +259,26 @@
       e.preventDefault();
       submitMove();
     }
+  });
+
+  // Chess keyboard
+  document.getElementById('chessKeyboard').addEventListener('click', function (e) {
+    const btn = e.target.closest('.kb-key');
+    if (!btn) return;
+    const val = btn.dataset.val;
+    if (val === 'DEL') {
+      moveInput.value = moveInput.value.slice(0, -1);
+    } else if (val === 'O-O') {
+      // If already O-O, make it O-O-O (long castling)
+      if (moveInput.value === 'O-O') {
+        moveInput.value = 'O-O-O';
+      } else {
+        moveInput.value = 'O-O';
+      }
+    } else {
+      moveInput.value += val;
+    }
+    moveInput.focus();
   });
 
   document.getElementById('newGameBtn').addEventListener('click', function () {

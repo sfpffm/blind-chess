@@ -275,6 +275,63 @@ header h1 {
   width: 200px;
 }
 
+/* Chess keyboard */
+.chess-keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.kb-row {
+  display: flex;
+  gap: 4px;
+}
+
+.kb-key {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 1rem;
+  font-family: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.05s;
+  text-align: center;
+  min-width: 0;
+}
+
+.kb-key:active {
+  transform: scale(0.9);
+}
+
+.file-key {
+  background: #2a3a5c;
+  color: #a0c4ff;
+}
+
+.rank-key {
+  background: #3a2a5c;
+  color: #d0a0ff;
+}
+
+.piece-key {
+  background: #5c3a2a;
+  color: #ffc0a0;
+}
+
+.special-key {
+  background: #2a5c3a;
+  color: #a0ffc0;
+}
+
+.del-key {
+  background: var(--accent);
+  color: white;
+}
+
 @media (max-height: 600px) {
   header h1 { font-size: 1.1rem; }
   .move-row { font-size: 1rem; padding: 4px 0; }
