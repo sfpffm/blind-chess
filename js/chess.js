@@ -415,11 +415,27 @@ const Chess = (() => {
       // Remove check/mate symbols and capture 'x'
       let san = input.replace(/[+#!?]/g, '').trim();
 
-      // Map German piece letters to English before parsing
+      // Map German/lowercase piece letters to English before parsing
       // S=Springer(Knight), L=Laeufer(Bishop), T=Turm(Rook), D=Dame(Queen)
-      const germanMap = { S: 'N', L: 'B', T: 'R', D: 'Q' };
-      if (san.length >= 2 && germanMap[san[0]]) {
-        san = germanMap[san[0]] + san.slice(1);
+      // Also handle lowercase: s, l, t, d + English: n, b, r, q, k
+      const pieceLetterMap = {
+        S: 'N', s: 'N', L: 'B', l: 'B', T: 'R', t: 'R', D: 'Q', d: 'Q',
+        N: 'N', n: 'N', B: 'B', b: 'B', R: 'R', r: 'R', Q: 'Q', q: 'Q',
+        K: 'K', k: 'K',
+      };
+      // A piece letter followed by a file (a-h) or 'x' indicates a piece move
+      if (san.length >= 2 && pieceLetterMap[san[0]] &&
+          ('abcdefghx'.includes(san[1]) || '12345678'.includes(san[1]))) {
+        // Avoid mistaking pawn file letters (b, d) for piece letters
+        // 'b' or 'd' followed by a digit is ambiguous: could be Bd4 or pawn b/d + rank
+        // If first char is b/d lowercase and second char is a digit, prefer pawn interpretation
+        const fc = san[0];
+        const sc = san[1];
+        const isPawnFile = ('abcdefgh'.includes(fc) && '12345678'.includes(sc));
+        const couldBePiece = pieceLetterMap[fc] && !isPawnFile;
+        if (couldBePiece) {
+          san = pieceLetterMap[fc] + san.slice(1);
+        }
       }
 
       // Extract promotion: =Q, =N, =D, =S, etc.
