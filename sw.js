@@ -1,4 +1,4 @@
-const CACHE_NAME = 'blind-chess-v2';
+const CACHE_NAME = 'blind-chess-v3';
 const ASSETS = [
   '/',
   '/index.html',

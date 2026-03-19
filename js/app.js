@@ -100,7 +100,7 @@
 
     const result = game.doMove(input);
     if (!result) {
-      showError('Ungueltiger Zug! Format: e2-e4');
+      showError('Ungueltiger Zug! z.B. e4, Nf3, O-O');
       moveInput.select();
       return;
     }

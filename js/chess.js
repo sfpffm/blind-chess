@@ -374,39 +374,169 @@ const Chess = (() => {
       return legal;
     }
 
-    // Parse user input like "e2-e4" or "e2e4" and find matching legal move
+    // Parse user input - supports both long (e2-e4) and short (e4, Nf3, Bxe5, O-O) notation
     function parseMove(input) {
-      input = input.toLowerCase().replace(/[^a-h1-8]/g, '');
-      if (input.length < 4) return null;
-      const fromName = input.slice(0, 2);
-      const toName = input.slice(2, 4);
-      const promoChar = input.length > 4 ? input[4] : '';
-      const from = nameToSq(fromName);
-      const to = nameToSq(toName);
-      if (from < 0 || to < 0) return null;
-
+      input = input.trim();
       const legal = legalMoves();
-      const matches = legal.filter(m => m.from === from && m.to === to);
-      if (matches.length === 0) return null;
+      if (legal.length === 0) return null;
 
-      // If promotion, find correct one
-      if (matches.length > 1) {
-        const promoMap = { q: QUEEN, r: ROOK, b: BISHOP, n: KNIGHT };
-        const promo = promoMap[promoChar] || QUEEN; // default to queen
-        return matches.find(m => m.promotion === promo) || matches[0];
+      // Castling: O-O, O-O-O, 0-0, 0-0-0
+      const castleInput = input.replace(/0/g, 'O').replace(/o/g, 'O').replace(/\s/g, '');
+      if (castleInput === 'O-O' || castleInput === 'OO') {
+        return legal.find(m => m.castling === 'K' || m.castling === 'k') || null;
       }
-      return matches[0];
+      if (castleInput === 'O-O-O' || castleInput === 'OOO') {
+        return legal.find(m => m.castling === 'Q' || m.castling === 'q') || null;
+      }
+
+      // Try long notation first: e2-e4, e2e4
+      const longClean = input.toLowerCase().replace(/[^a-h1-8]/g, '');
+      if (longClean.length >= 4) {
+        const fromName = longClean.slice(0, 2);
+        const toName = longClean.slice(2, 4);
+        const promoChar = longClean.length > 4 ? longClean[4] : '';
+        const from = nameToSq(fromName);
+        const to = nameToSq(toName);
+        if (from >= 0 && to >= 0) {
+          const matches = legal.filter(m => m.from === from && m.to === to);
+          if (matches.length > 0) {
+            if (matches.length > 1 && matches[0].promotion) {
+              const promoMap = { q: QUEEN, r: ROOK, b: BISHOP, n: KNIGHT };
+              const promo = promoMap[promoChar] || QUEEN;
+              return matches.find(m => m.promotion === promo) || matches[0];
+            }
+            return matches[0];
+          }
+        }
+      }
+
+      // Short notation: e4, Nf3, Bxe5, Nbd2, R1e1, exd5, e8=Q
+      // Remove check/mate symbols and capture 'x'
+      let san = input.replace(/[+#!?]/g, '').trim();
+
+      // Extract promotion: =Q, =N, etc.
+      let promoType = null;
+      const promoMatch = san.match(/[=]?([QRBNqrbn])$/);
+      if (promoMatch && san.length > 2) {
+        const pc = promoMatch[1].toUpperCase();
+        const promoMap = { Q: QUEEN, R: ROOK, B: BISHOP, N: KNIGHT };
+        if (promoMap[pc]) {
+          promoType = promoMap[pc];
+          san = san.slice(0, san.length - promoMatch[0].length);
+        }
+      }
+
+      // Remove 'x' for captures
+      san = san.replace(/x/gi, '');
+
+      // Determine piece type and target square
+      let targetPieceType = PAWN;
+      let disambigFile = -1;
+      let disambigRank = -1;
+      let targetFile = -1;
+      let targetRank = -1;
+
+      if (san.length === 0) return null;
+
+      const firstChar = san[0];
+      // Piece move: starts with uppercase N, B, R, Q, K
+      if ('NBRQK'.includes(firstChar)) {
+        const pieceMap = { N: KNIGHT, B: BISHOP, R: ROOK, Q: QUEEN, K: KING };
+        targetPieceType = pieceMap[firstChar];
+        san = san.slice(1);
+      }
+
+      // Now san should end with target square (e.g. "f3", "bd2", "1e1")
+      if (san.length < 2) return null;
+
+      // Last two chars = target square
+      targetFile = FILES.indexOf(san[san.length - 2]);
+      targetRank = RANKS.indexOf(san[san.length - 1]);
+      if (targetFile < 0 || targetRank < 0) return null;
+
+      // Disambiguation chars (everything before target square)
+      const disambig = san.slice(0, san.length - 2);
+      for (const c of disambig) {
+        if (FILES.includes(c)) disambigFile = FILES.indexOf(c);
+        else if (RANKS.includes(c)) disambigRank = RANKS.indexOf(c);
+      }
+
+      const targetSq = sqIndex(targetFile, targetRank);
+
+      // Find matching legal moves
+      const matches = legal.filter(m => {
+        if (m.to !== targetSq) return false;
+        if (m.castling) return false;
+        const p = board[m.from];
+        if (pieceType(p) !== targetPieceType) return false;
+        if (disambigFile >= 0 && sqFile(m.from) !== disambigFile) return false;
+        if (disambigRank >= 0 && sqRank(m.from) !== disambigRank) return false;
+        if (promoType && m.promotion !== promoType) return false;
+        if (promoType && !m.promotion) return false;
+        return true;
+      });
+
+      if (matches.length === 1) return matches[0];
+      if (matches.length > 1) {
+        // If promotion ambiguity, default to queen
+        if (matches[0].promotion) {
+          return matches.find(m => m.promotion === (promoType || QUEEN)) || matches[0];
+        }
+        return matches[0];
+      }
+
+      return null;
     }
 
-    // Format a move as notation
+    // Format a move as SAN (Standard Algebraic Notation)
     function moveToNotation(move) {
       if (move.castling === 'K' || move.castling === 'k') return 'O-O';
       if (move.castling === 'Q' || move.castling === 'q') return 'O-O-O';
-      let s = sqName(move.from) + '-' + sqName(move.to);
-      if (move.promotion) {
-        const promoChars = { [QUEEN]: 'Q', [ROOK]: 'R', [BISHOP]: 'B', [KNIGHT]: 'N' };
-        s += '=' + promoChars[move.promotion];
+
+      const p = board[move.to] !== EMPTY ? board[move.to] : (move.enPassant ? (turn | PAWN) : EMPTY);
+      // Note: after makeMove, board[move.to] has the moved piece. Before makeMove, we need the original.
+      // This function is called BEFORE makeMove in doMove, so board[move.from] is still the piece.
+      const piece = board[move.from];
+      const type = pieceType(piece);
+      const isCapture = board[move.to] !== EMPTY || move.enPassant;
+      const promoChars = { [QUEEN]: 'Q', [ROOK]: 'R', [BISHOP]: 'B', [KNIGHT]: 'N' };
+
+      let s = '';
+
+      if (type === PAWN) {
+        if (isCapture) {
+          s += FILES[sqFile(move.from)] + 'x';
+        }
+        s += sqName(move.to);
+        if (move.promotion) {
+          s += '=' + promoChars[move.promotion];
+        }
+      } else {
+        const pieceChars = { [KNIGHT]: 'N', [BISHOP]: 'B', [ROOK]: 'R', [QUEEN]: 'Q', [KING]: 'K' };
+        s += pieceChars[type];
+
+        // Disambiguation: check if another piece of same type can reach same square
+        const legal = legalMoves();
+        const ambiguous = legal.filter(m =>
+          m.to === move.to && m.from !== move.from && !m.castling &&
+          pieceType(board[m.from]) === type
+        );
+        if (ambiguous.length > 0) {
+          const sameFile = ambiguous.some(m => sqFile(m.from) === sqFile(move.from));
+          const sameRank = ambiguous.some(m => sqRank(m.from) === sqRank(move.from));
+          if (!sameFile) {
+            s += FILES[sqFile(move.from)];
+          } else if (!sameRank) {
+            s += RANKS[sqRank(move.from)];
+          } else {
+            s += sqName(move.from);
+          }
+        }
+
+        if (isCapture) s += 'x';
+        s += sqName(move.to);
       }
+
       return s;
     }
 
