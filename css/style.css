@@ -151,7 +151,6 @@ header h1 {
   border: 2px solid var(--surface2);
   border-radius: 12px;
   color: var(--text);
-  text-transform: lowercase;
   outline: none;
   transition: border-color 0.2s;
 }

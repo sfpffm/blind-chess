@@ -411,14 +411,23 @@ const Chess = (() => {
       }
 
       // Short notation: e4, Nf3, Bxe5, Nbd2, R1e1, exd5, e8=Q
+      // Also German: Sf3, Lg5, Td1, De2
       // Remove check/mate symbols and capture 'x'
       let san = input.replace(/[+#!?]/g, '').trim();
 
-      // Extract promotion: =Q, =N, etc.
+      // Map German piece letters to English before parsing
+      // S=Springer(Knight), L=Laeufer(Bishop), T=Turm(Rook), D=Dame(Queen)
+      const germanMap = { S: 'N', L: 'B', T: 'R', D: 'Q' };
+      if (san.length >= 2 && germanMap[san[0]]) {
+        san = germanMap[san[0]] + san.slice(1);
+      }
+
+      // Extract promotion: =Q, =N, =D, =S, etc.
       let promoType = null;
-      const promoMatch = san.match(/[=]?([QRBNqrbn])$/);
+      const promoMatch = san.match(/[=]?([QRBNDSTLqrbndstl])$/);
       if (promoMatch && san.length > 2) {
-        const pc = promoMatch[1].toUpperCase();
+        let pc = promoMatch[1].toUpperCase();
+        if (germanMap[pc]) pc = germanMap[pc];
         const promoMap = { Q: QUEEN, R: ROOK, B: BISHOP, N: KNIGHT };
         if (promoMap[pc]) {
           promoType = promoMap[pc];
