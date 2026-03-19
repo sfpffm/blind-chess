@@ -124,8 +124,8 @@
       const aiMove = ChessEngine.findBestMove(game, 4);
       if (aiMove) {
         const notation = game.moveToNotation(aiMove);
-        game.makeMove(aiMove);
-        game.getHistory().push({ move: aiMove, undo: null, notation: addCheckSuffix(notation) });
+        const undo = game.makeMove(aiMove);
+        game.getHistory().push({ move: aiMove, undo: undo, notation: addCheckSuffix(notation) });
       }
 
       moveInput.disabled = false;
